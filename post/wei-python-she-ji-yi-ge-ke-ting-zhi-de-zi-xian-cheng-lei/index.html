@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" >
+
+<title>为python设计一个可终止的子线程类 | 顾的小站</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://groers.github.io/favicon.ico?v=1656335450723">
+<link rel="stylesheet" href="https://groers.github.io/styles/main.css">
+
+
+
+<link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+
+
+    <meta name="description" content="python中的多线程是没有为子线程提供终止函数的，要想终止一个不断循环的子线程就得采用一些特殊的办法，其中最为方便的是设置一个stop_flag全局变量，然后子线程在while循环中不断检查这个标志位如果为false则退出循环。示例代码如..." />
+    <meta name="keywords" content="python,原创,编程" />
+  </head>
+  <body>
+    <div id="app" class="main">
+
+      <div class="sidebar" :class="{ 'full-height': menuVisible }">
+  <div class="top-container" data-aos="fade-right">
+    <div class="top-header-container">
+      <a class="site-title-container" href="https://groers.github.io">
+        <img src="https://groers.github.io/images/avatar.png?v=1656335450723" class="site-logo">
+        <h1 class="site-title">顾的小站</h1>
+      </a>
+      <div class="menu-btn" @click="menuVisible = !menuVisible">
+        <div class="line"></div>
+      </div>
+    </div>
+    <div>
+      
+        
+          <a href="/" class="site-nav">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="site-nav">
+            归档
+          </a>
+        
+      
+        
+          <a href="/tags" class="site-nav">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="site-nav">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+  <div class="bottom-container" data-aos="flip-up" data-aos-offset="0">
+    <div class="social-container">
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    </div>
+    <div class="site-description">
+      信手而记
+    </div>
+    <div class="site-footer">
+      Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://groers.github.io/atom.xml" target="_blank">RSS</a>
+    </div>
+  </div>
+</div>
+
+
+      <div class="main-container">
+        <div class="content-container" data-aos="fade-up">
+          <div class="post-detail">
+            <h2 class="post-title">为python设计一个可终止的子线程类</h2>
+            <div class="post-date">2022-05-05</div>
+            
+              <div class="feature-container" style="background-image: url('https://groers.github.io/post-images/wei-python-she-ji-yi-ge-ke-ting-zhi-de-zi-xian-cheng-lei.webp')">
+              </div>
+            
+            <div class="post-content" v-pre>
+              <p>python中的多线程是没有为子线程提供终止函数的，要想终止一个不断循环的子线程就得采用<a href="https://www.pythonf.cn/read/106554">一些特殊的办法</a>，其中最为方便的是设置一个<code>stop_flag</code>全局变量，然后子线程在while循环中不断检查这个标志位如果为<code>false</code>则退出循环。示例代码如下：</p>
+<pre><code class="language-python">import threading
+import time
+
+
+class StopFlag:
+    def __init__(self, boolean):
+        self._stop = boolean
+
+    @property
+    def stop(self):
+        return self._stop
+
+    @stop.setter
+    def stop(self, boolean):
+        self._stop = boolean
+
+
+class StoppableThread:
+    &quot;&quot;&quot;
+    所有在此类对应对象中start的函数共享一个stop_flag当启动一个函数时，上一个函数会被自动停止
+    &quot;&quot;&quot;
+
+    def __init__(self):
+        self.stop_flag = StopFlag(True)
+        self.pre_thread = None
+
+    # 子线程需要获取stop_flag根据其值和自己的规则来进行操作
+    def get_stop_flag(self):
+        return self.stop_flag
+
+    def start(self, target, args):
+        thread = threading.Thread(target=target, args=args)
+        self.stop()
+        self.stop_flag.stop = False
+        self.pre_thread = thread
+        thread.setDaemon(True)
+        thread.start()
+
+    def stop(self):
+        if self.pre_thread is not None:
+            self.stop_flag.stop = True
+            self.pre_thread.join()
+
+
+def run(num, stop_flag):
+    while True:
+        print('thread running', num)
+        if stop_flag.stop:
+            break
+        time.sleep(0.5)
+    print(&quot;run stopped&quot;)
+
+
+link = StoppableThread()
+link.start(run, (233, link.get_stop_flag()))
+time.sleep(5)
+link.start(run, (255, link.get_stop_flag()))
+time.sleep(3)
+link.stop()
+print(&quot;done&quot;)
+</code></pre>
+<p>输出为</p>
+<pre><code class="language-shell">thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+run stopped
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+run stopped
+done
+</code></pre>
+<p>在代码设计中将如何使用标志位的权利交给了子线程，所以<strong>子线程需要将标志位作为其一个参数传给target函数</strong>，这样设计的子线程会更加灵活。所以在<code>StoppableThread</code>中提供了<code>get_stop_flag</code>方法以获得此标志位。</p>
+<p>使用同一个<code>StoppableThread</code>对象启动的线程其实是互相影响的，因为公用了一个<code>StopFlag</code>所以当下一个线程启动时，之前的线程会被停止。如果你不想线程间互相影响，只需要新建一个<code>StoppableThread</code>即可。</p>
+
+            </div>
+            
+              <div class="tag-container">
+                
+                  <a href="https://groers.github.io/tag/_K2lcYYUf/" class="tag">
+                    python
+                  </a>
+                
+                  <a href="https://groers.github.io/tag/COQOu0QDiV/" class="tag">
+                    原创
+                  </a>
+                
+                  <a href="https://groers.github.io/tag/5Rcxr9TQ7/" class="tag">
+                    编程
+                  </a>
+                
+              </div>
+            
+            
+              <div class="next-post">
+                <div class="next">下一篇</div>
+                <a href="https://groers.github.io/post/chu-xue-jian-niu-pai/">
+                  <h3 class="post-title">
+                    初学煎牛排 
+                  </h3>
+                </a>
+              </div>
+            
+
+            
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+<script type="application/javascript">
+
+AOS.init();
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+
+
+  </body>
+</html>

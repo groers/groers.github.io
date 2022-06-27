@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://groers.github.io</id>
+    <title>顾的小站</title>
+    <updated>2022-06-27T13:10:53.344Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://groers.github.io"/>
+    <link rel="self" href="https://groers.github.io/atom.xml"/>
+    <subtitle>信手而记</subtitle>
+    <logo>https://groers.github.io/images/avatar.png</logo>
+    <icon>https://groers.github.io/favicon.ico</icon>
+    <rights>All rights reserved 2022, 顾的小站</rights>
+    <entry>
+        <title type="html"><![CDATA[为python设计一个可终止的子线程类]]></title>
+        <id>https://groers.github.io/post/wei-python-she-ji-yi-ge-ke-ting-zhi-de-zi-xian-cheng-lei/</id>
+        <link href="https://groers.github.io/post/wei-python-she-ji-yi-ge-ke-ting-zhi-de-zi-xian-cheng-lei/">
+        </link>
+        <updated>2022-05-05T15:37:15.000Z</updated>
+        <content type="html"><![CDATA[<p>python中的多线程是没有为子线程提供终止函数的，要想终止一个不断循环的子线程就得采用<a href="https://www.pythonf.cn/read/106554">一些特殊的办法</a>，其中最为方便的是设置一个<code>stop_flag</code>全局变量，然后子线程在while循环中不断检查这个标志位如果为<code>false</code>则退出循环。示例代码如下：</p>
+<pre><code class="language-python">import threading
+import time
+
+
+class StopFlag:
+    def __init__(self, boolean):
+        self._stop = boolean
+
+    @property
+    def stop(self):
+        return self._stop
+
+    @stop.setter
+    def stop(self, boolean):
+        self._stop = boolean
+
+
+class StoppableThread:
+    &quot;&quot;&quot;
+    所有在此类对应对象中start的函数共享一个stop_flag当启动一个函数时，上一个函数会被自动停止
+    &quot;&quot;&quot;
+
+    def __init__(self):
+        self.stop_flag = StopFlag(True)
+        self.pre_thread = None
+
+    # 子线程需要获取stop_flag根据其值和自己的规则来进行操作
+    def get_stop_flag(self):
+        return self.stop_flag
+
+    def start(self, target, args):
+        thread = threading.Thread(target=target, args=args)
+        self.stop()
+        self.stop_flag.stop = False
+        self.pre_thread = thread
+        thread.setDaemon(True)
+        thread.start()
+
+    def stop(self):
+        if self.pre_thread is not None:
+            self.stop_flag.stop = True
+            self.pre_thread.join()
+
+
+def run(num, stop_flag):
+    while True:
+        print('thread running', num)
+        if stop_flag.stop:
+            break
+        time.sleep(0.5)
+    print(&quot;run stopped&quot;)
+
+
+link = StoppableThread()
+link.start(run, (233, link.get_stop_flag()))
+time.sleep(5)
+link.start(run, (255, link.get_stop_flag()))
+time.sleep(3)
+link.stop()
+print(&quot;done&quot;)
+</code></pre>
+<p>输出为</p>
+<pre><code class="language-shell">thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+thread running 233
+run stopped
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+thread running 255
+run stopped
+done
+</code></pre>
+<p>在代码设计中将如何使用标志位的权利交给了子线程，所以<strong>子线程需要将标志位作为其一个参数传给target函数</strong>，这样设计的子线程会更加灵活。所以在<code>StoppableThread</code>中提供了<code>get_stop_flag</code>方法以获得此标志位。</p>
+<p>使用同一个<code>StoppableThread</code>对象启动的线程其实是互相影响的，因为公用了一个<code>StopFlag</code>所以当下一个线程启动时，之前的线程会被停止。如果你不想线程间互相影响，只需要新建一个<code>StoppableThread</code>即可。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[初学煎牛排 ]]></title>
+        <id>https://groers.github.io/post/chu-xue-jian-niu-pai/</id>
+        <link href="https://groers.github.io/post/chu-xue-jian-niu-pai/">
+        </link>
+        <updated>2022-04-27T08:23:39.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="起因">起因</h1>
+<p>写这篇文章的起因是我最近疫情呆在家是在是吃腻了外卖，所以自己网上搞来了几片牛排，准备自己开火做点好吃的。这是我第一次煎牛排，我总结了几篇知乎上的教程试着操作了一下，发现煎出来的效果还意外地不错，所以在此记下来，以便下一次按图索骥。</p>
+<h1 id="步骤">步骤</h1>
+<ol>
+<li>牛排解冻
+<blockquote>
+<p>家用的通常是冷冻牛排，解冻关键：冷冻室 &gt; 冷藏室6～10小时 &gt; 室内常温10～20分钟；</p>
+</blockquote>
+</li>
+<li>热锅：蒸发掉锅中水分</li>
+<li>热油（七成热）：一级玉米油，淹没锅底即可</li>
+<li>下牛排，正反各煎<strong>一分钟</strong></li>
+<li>出锅，摆盘，淋上些许黄油（根据商家送的量来说是大半袋）<br>
+<img src="https://groers.github.io/post-images/1651049013845.jpg" alt="" loading="lazy"></li>
+<li>静置等待牛排利用余热自热<strong>三分钟</strong></li>
+<li>淋上些许黑胡椒汁（根据商家送的量来说是半袋）<br>
+<img src="https://groers.github.io/post-images/1651049018904.jpg" alt="" loading="lazy"></li>
+</ol>
+<blockquote>
+<p>如果喜欢吃嫩一点的可以拿刀背敲一下肉，会松散许多</p>
+</blockquote>
+<h1 id="防溅油小技巧">防溅油小技巧</h1>
+<ol>
+<li>倒油入锅前先热锅</li>
+<li>倒菜从靠自己一侧顺着锅边往下倒</li>
+<li>尽量矮一点倒</li>
+</ol>
+<h1 id="判断油温的方法">判断油温的方法</h1>
+<p>【1成热】，油温大约<strong>30度</strong>左右，放入筷子后很平静，基本上没有变化和其他反应。这个是初始阶段，一般家庭平时做菜很少用到。它只是油温判断的切入点。<br>
+<img src="https://groers.github.io/post-images/1651761123042.jpg" alt="" loading="lazy"></p>
+<p>【3成热】，温度大概<strong>90度</strong>左右，把筷子放入后，周围有很多细心的气泡，但是没有声音和青烟。此时把手掌向下隔空感受以下，会有热热的感觉。这个油温多数用于软炸和溜炒，主要是初定型，保持食材的鲜嫩，保留大部分水分，为下一步做菜做准备。这个一般家庭也很少用到。</p>
+<figure data-type="image" tabindex="1"><img src="https://groers.github.io/post-images/1651761149395.jpg" alt="" loading="lazy"></figure>
+<p>【6成热】，油温大概在<strong>180度</strong>左右，放入筷子后，四周有密集的气泡，并且比较大，有轻微的声响，油面有明显的波动，而且伴随少量的青烟。这个温度适合滑、炒、炸等，<strong>一般家庭多用这个温度炒菜</strong>，不仅味道好吃，而且更健康。食材也不容易炒得碎烂。</p>
+<figure data-type="image" tabindex="2"><img src="https://groers.github.io/post-images/1651761229694.jpg" alt="" loading="lazy"></figure>
+<p>【8成热】，油温大概在<strong>240度</strong>左右，放入筷子后，四周有明显的大气泡，并且发出“噼里啪啦”的声音，油面有剧烈翻动，青烟多而且明显。这个温度适合复炸，炝炒，爆炒。能让食材表面快速定型，锁住内部水分，形成外酥内嫩的口感，但是很容易糊掉，所以这个要注意。</p>
+<p>【10成热】，油温大概<strong>300度</strong>左右，现在不用放筷子了，直接就能感受到，油面剧烈滚动，伴随大量青烟。这个不适合做菜了，通常是用来把有彻底烧熟，比如菜籽油，如果不彻底烧熟的话，香味出不来，而且还有一股生味，所以要先烧到10成热，然后关火降温，做油泼辣椒，或者淋油都可以。</p>
+<p>1成热大约对应30度油温的提高，炒菜时不要用高油温，大约在6成左右就可以，如果看见油温冒青烟了，就不要下原料了，以免出现烫伤或者食材毁坏的情况，先关火让油温慢慢降下来，之后再来炒菜。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[消息队列的五大应用场景]]></title>
+        <id>https://groers.github.io/post/xiao-xi-dui-lie-de-wu-da-ying-yong-chang-jing/</id>
+        <link href="https://groers.github.io/post/xiao-xi-dui-lie-de-wu-da-ying-yong-chang-jing/">
+        </link>
+        <updated>2022-04-27T07:50:48.000Z</updated>
+        <content type="html"><![CDATA[<blockquote>
+<p>参考：https://www.zhihu.com/question/54152397/answer/1953618598</p>
+</blockquote>
+<h1 id="一-异步处理">一、异步处理</h1>
+<p>场景说明：用户注册后，需要发注册邮件和注册短信。传统的做法有两种：串行的方式和并行方式。<br>
+<strong>串行方式</strong>：将注册信息写入数据库成功后，发送注册邮件，再发送注册短信。以上三个任务全部完成后，返回给客户。</p>
+<figure data-type="image" tabindex="1"><img src="https://pic2.zhimg.com/80/v2-4f3ae539f8ab3f4a7bac359884a05c3a_720w.jpg?source=1940ef5c" alt="串行方式" loading="lazy"></figure>
+<p><strong>并行方式</strong>：将注册信息写入数据库成功后，发送注册邮件的同时，发送注册短信。以上三个任务完成后，返回给客户端。与串行的差别是，并行的方式可以提高处理的时间。</p>
+<figure data-type="image" tabindex="2"><img src="https://pic2.zhimg.com/80/v2-8f7bd03d626908fa12d725adb220199e_720w.jpg?source=1940ef5c" alt="" loading="lazy"></figure>
+<p>假设三个业务节点每个使用50毫秒钟，不考虑网络等其他开销，则串行方式的时间是150毫秒，并行的时间可能是100毫秒。</p>
+<p>因为CPU在单位时间内处理的请求数是一定的，假设CPU1秒内吞吐量是100次。则串行方式1秒内CPU可处理的请求量是7次（1000/150）。并行方式处理的请求量是10次（1000/100）。</p>
+<p><strong>小结</strong>：如以上案例描述，传统的方式系统的性能（并发量，吞吐量，响应时间）会有瓶颈。如何解决这个问题呢？</p>
+<p>引入消息队列，将不是必须的业务逻辑，异步处理。改造后的架构如下：<br>
+<img src="https://pic3.zhimg.com/80/v2-5cc608e7402c78c81cb0caa788ebc5cd_720w.jpg?source=1940ef5c" alt="" loading="lazy"></p>
+<p>按照以上约定，用户的响应时间相当于是注册信息写入数据库的时间，也就是50毫秒。注册邮件，发送短信写入消息队列后，直接返回，因此写入消息队列的速度很快，基本可以忽略，因此用户的响应时间可能是50毫秒。因此架构改变后，系统的吞吐量提高到每秒20QPS。比串行提高了3倍，比并行提高了两倍！</p>
+<h1 id="二-应用解耦">二、应用解耦</h1>
+<p>场景说明：用户下单后，订单系统需要通知库存系统。传统的做法是，订单系统调用库存系统的接口。如下图：</p>
+<figure data-type="image" tabindex="3"><img src="https://pic3.zhimg.com/80/v2-172506668a033aaadd29b6adb313cac4_720w.jpg?source=1940ef5c" alt="" loading="lazy"></figure>
+<p><strong>传统模式的缺点：</strong></p>
+<p>假如库存系统无法访问，则订单减库存将失败，从而导致订单失败，订单系统与库存系统耦合。</p>
+<p>如何解决以上问题呢？引入应用消息队列后的方案，如下图：</p>
+<figure data-type="image" tabindex="4"><img src="https://pic1.zhimg.com/80/v2-28893d30fb5218a15f6fc889cce2394d_720w.jpg?source=1940ef5c" alt="" loading="lazy"></figure>
+<p>订单系统：用户下单后，订单系统完成持久化处理，将消息写入消息队列，返回用户订单下单成功</p>
+<p>库存系统：订阅下单的消息，采用拉/推的方式，获取下单信息，库存系统根据下单信息，进行库存操作</p>
+<p>假如：在下单时库存系统不能正常使用。也不影响正常下单，因为下单后，订单系统写入消息队列就不再关心其他的后续操作了。实现订单系统与库存系统的应用解耦。</p>
+<h1 id="三-流量削峰">三、 流量削峰</h1>
+<p>流量削锋也是消息队列中的常用场景，一般在秒杀或团抢活动中使用广泛！</p>
+<p>应用场景：秒杀活动，一般会因为流量过大，导致流量暴增，应用挂掉。为解决这个问题，一般需要在应用前端加入消息队列。</p>
+<p>可以控制活动的人数，可以缓解短时间内高流量压垮应用。</p>
+<figure data-type="image" tabindex="5"><img src="https://pic1.zhimg.com/80/v2-72af2948157016e4fe4243055c09fb09_720w.jpg?source=1940ef5c" alt="" loading="lazy"></figure>
+<p>用户的请求，服务器接收后，首先写入消息队列。假如消息队列长度超过最大数量，则直接抛弃用户请求或跳转到错误页面。</p>
+<p>秒杀业务根据消息队列中的请求信息，再做后续处理。</p>
+<h1 id="四-日志处理">四、日志处理</h1>
+<p>日志处理是指将消息队列用在日志处理中，比如Kafka的应用，解决大量日志传输的问题。架构简化如下：</p>
+<figure data-type="image" tabindex="6"><img src="https://pica.zhimg.com/80/v2-6bab78ce7834636ad388941664938d6a_720w.jpg?source=1940ef5c" alt="" loading="lazy"></figure>
+<p>日志采集客户端，负责日志数据采集，定时写受写入Kafka队列；Kafka消息队列，负责日志数据的接收，存储和转发；日志处理应用：订阅并消费kafka队列中的日志数据。</p>
+<p>以下是新浪kafka日志处理应用案例：</p>
+<figure data-type="image" tabindex="7"><img src="https://pica.zhimg.com/80/v2-3e3a2c44ed1f0338d7d475e34e7c1514_720w.jpg?source=1940ef5c0" alt="" loading="lazy"></figure>
+<p><strong>Kafka</strong>：接收用户日志的消息队列；</p>
+<p><strong>Logstash</strong>：做日志解析，统一成JSON输出给Elasticsearch；</p>
+<p><strong>Elasticsearch</strong>：实时日志分析服务的核心技术，一个schemaless，实时的数据存储服务，通过index组织数据，兼具强大的搜索和统计功能；</p>
+<p><strong>Kibana</strong>：基于Elasticsearch的数据可视化组件，超强的数据可视化能力是众多公司选择ELK stack的重要原因。</p>
+<h1 id="五-消息通讯">五、消息通讯</h1>
+<p>消息通讯是指，消息队列一般都内置了高效的通信机制，因此也可以用在纯的消息通讯。比如实现点对点消息队列，或者聊天室等。</p>
+<p><strong>点对点通讯</strong>：<br>
+<img src="https://pic2.zhimg.com/80/v2-41f9861e0cf4e5200f45615f044327e8_720w.jpg?source=1940ef5c" alt="" loading="lazy"><br>
+客户端A和客户端B使用同一队列，进行消息通讯。</p>
+<p><strong>聊天室通讯</strong>：<br>
+<img src="https://pic2.zhimg.com/80/v2-d2b28ac0235f05dfd9cc2ff3151c19c8_720w.jpg?source=1940ef5c" alt="" loading="lazy"></p>
+<p>客户端A，客户端B，客户端N订阅同一主题，进行消息发布和接收。实现类似聊天室效果。</p>
+]]></content>
+    </entry>
+</feed>
